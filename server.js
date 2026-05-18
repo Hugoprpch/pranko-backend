@@ -20,7 +20,8 @@ app.use((req, res, next) => {
 
 const ALLOWED_ORIGINS = [
   'https://pranko.lol',
-  'https://www.pranko.lol'
+  'https://www.pranko.lol',
+  'https://app.pranko.lol'
 ];
 
 app.use((req, res, next) => {
@@ -158,7 +159,7 @@ wait
 
 cleanup() {
   rm -rf "$TMP_DIR"
-  open "${process.env.FRONTEND_URL}/gg"
+  open "https://pranko.lol/gg"
   exit 0
 }
 
