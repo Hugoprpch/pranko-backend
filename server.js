@@ -83,6 +83,106 @@ async function createUniqueCode(packSize, email) {
   return code;
 }
 
+// ── Email templates ──────────────────────────────────────────────────────────
+function emailCheatCode(codes, magicLink) {
+  const codeList = codes.map(c => `
+    <tr>
+      <td style="padding:12px 0;border-bottom:1px solid #f0f0f0">
+        <span style="font-family:monospace;font-size:28px;font-weight:700;letter-spacing:6px;color:#000">${c}</span>
+      </td>
+    </tr>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <tr>
+          <td style="background:#FFD000;padding:24px 32px">
+            <p style="margin:0;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#000">pranko.lol</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:800;color:#000;line-height:1.2">Your colleague's Mac<br>is waiting. 🥐</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px">
+            <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.08em">Your code${codes.length > 1 ? 's' : ''}</p>
+            <table width="100%" cellpadding="0" cellspacing="0">${codeList}</table>
+            <p style="margin:24px 0 8px;font-size:14px;color:#e53e3e;font-weight:600">⚠️ Single-use — do NOT test on your own Mac</p>
+            <p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.5">Each code works once. The script runs silently for 30 minutes, then deletes itself.</p>
+            <table cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td align="center">
+                  <a href="${magicLink}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.02em">
+                    Access my dashboard →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:24px 0 0;font-size:12px;color:#999;text-align:center;line-height:1.5">
+              Keep this email — it's your only way back to your codes.<br>
+              Questions? <a href="mailto:hello@pranko.lol" style="color:#999">hello@pranko.lol</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9f9f9;padding:16px 32px;border-top:1px solid #f0f0f0">
+            <p style="margin:0;font-size:12px;color:#bbb;text-align:center">pranko.lol — Made with regrettable enthusiasm in Paris</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function emailMagicLink(magicLink) {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <tr>
+          <td style="background:#FFD000;padding:24px 32px">
+            <p style="margin:0;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#000">pranko.lol</p>
+            <h1 style="margin:8px 0 0;font-size:26px;font-weight:800;color:#000;line-height:1.2">Back for more? 🥐</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px">
+            <p style="margin:0 0 28px;font-size:16px;color:#333;line-height:1.5">Here's your dashboard link. All your codes are waiting.</p>
+            <table cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td align="center">
+                  <a href="${magicLink}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.02em">
+                    Access my codes →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:24px 0 0;font-size:12px;color:#999;text-align:center;line-height:1.5">
+              This link expires in 30 days.<br>
+              Questions? <a href="mailto:hello@pranko.lol" style="color:#999">hello@pranko.lol</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9f9f9;padding:16px 32px;border-top:1px solid #f0f0f0">
+            <p style="margin:0;font-size:12px;color:#bbb;text-align:center">pranko.lol — Made with regrettable enthusiasm in Paris</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 // ── Magic Link ───────────────────────────────────────────────────────────────
 function generateMagicLink(email) {
   const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -91,23 +191,11 @@ function generateMagicLink(email) {
 
 async function sendMagicLink(email, codes) {
   const magicLink = generateMagicLink(email);
-  const codeList = codes.map(c => `<li style="font-size:20px;font-weight:bold;letter-spacing:2px">${c}</li>`).join('');
-
   await resend.emails.send({
     from: 'Pranko.lol <hello@app.pranko.lol>',
     to: email,
     subject: '🥐 Your cheat code is ready',
-    html: `
-      <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px">
-        <h1 style="font-size:24px">🥐 Your colleague's PC is waiting.</h1>
-        <p>Your code${codes.length > 1 ? 's' : ''}:</p>
-        <ul style="background:#f5f5f5;padding:20px 32px;border-radius:8px">${codeList}</ul>
-        <p style="color:red;font-weight:bold">⚠️ Single-use code — do NOT test it on your own Mac</p>
-        <a href="${magicLink}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:16px;margin-top:16px">
-          Access my codes →
-        </a>
-      </div>
-    `
+    html: emailCheatCode(codes, magicLink)
   });
 }
 
@@ -117,7 +205,6 @@ async function scheduleAutoDestroy(code) {
     try {
       const result = await pool.query("SELECT status FROM codes WHERE code = $1", [code]);
       if (!result.rows[0] || result.rows[0].status === 'done') return;
-
       const client = sseClients[code];
       if (client) {
         client.write(`data: {"action":"stop"}\n\n`);
@@ -131,7 +218,7 @@ async function scheduleAutoDestroy(code) {
     } catch (e) {
       console.error(`Auto-destroy error for ${code}:`, e);
     }
-  }, 30 * 60 * 1000); // 30 minutes from first launch
+  }, 30 * 60 * 1000);
 }
 
 // ── Shell script generator ───────────────────────────────────────────────────
@@ -184,7 +271,6 @@ cleanup
 
 // ── ENDPOINTS ────────────────────────────────────────────────────────────────
 
-// GET /:code — injection point, returns shell script
 app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
   const { code } = req.params;
   try {
@@ -203,39 +289,29 @@ app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
   }
 });
 
-// GET /events/:code — SSE stream (dormance)
 app.get('/events/:code', (req, res) => {
   const { code } = req.params;
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
-
   sseClients[code] = res;
-
-  // Heartbeat every 25s to prevent Render from closing idle connections
   const heartbeat = setInterval(() => {
     res.write(': heartbeat\n\n');
   }, 25000);
-
   req.on('close', () => {
     clearInterval(heartbeat);
     delete sseClients[code];
   });
 });
 
-// POST /launch/:code — send play or say signal
 app.post('/launch/:code', async (req, res) => {
   const { code } = req.params;
   const { sound, text } = req.body;
-
   const client = sseClients[code];
   if (!client) return res.status(404).json({ error: 'Script not connected' });
-
-  // On first launch: mark as launched and schedule auto-destroy
   const result = await pool.query('SELECT status FROM codes WHERE code = $1', [code]);
   if (!result.rows[0]) return res.status(404).json({ error: 'Code not found' });
-
   if (result.rows[0].status === 'active') {
     await pool.query(
       "UPDATE codes SET status = 'launched', launched_at = NOW() WHERE code = $1",
@@ -243,12 +319,10 @@ app.post('/launch/:code', async (req, res) => {
     );
     scheduleAutoDestroy(code);
   }
-
   if (sound) {
     if (!VALID_SOUNDS.includes(sound)) return res.status(400).json({ error: 'Invalid sound' });
     client.write(`data: {"action":"play","sound":"${sound}"}\n\n`);
   } else if (text) {
-    // Sanitize: alphanumeric + basic punctuation only, max 200 chars
     const clean = text
       .replace(/[^a-zA-Z0-9àâäéèêëîïôùûüçÀÂÄÉÈÊËÎÏÔÙÛÜÇ .,!?'"-]/g, '')
       .slice(0, 200);
@@ -256,11 +330,9 @@ app.post('/launch/:code', async (req, res) => {
   } else {
     return res.status(400).json({ error: 'Missing sound or text' });
   }
-
   res.json({ ok: true });
 });
 
-// POST /stop/:code — kill switch
 app.post('/stop/:code', async (req, res) => {
   const { code } = req.params;
   const client = sseClients[code];
@@ -275,7 +347,6 @@ app.post('/stop/:code', async (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /status/:code — dashboard polling
 app.get('/status/:code', async (req, res) => {
   const { code } = req.params;
   try {
@@ -297,7 +368,6 @@ app.get('/status/:code', async (req, res) => {
   }
 });
 
-// GET /dashboard — validate magic link token, return codes
 app.get('/dashboard', async (req, res) => {
   const { token } = req.query;
   try {
@@ -312,12 +382,10 @@ app.get('/dashboard', async (req, res) => {
   }
 });
 
-// GET /gg — redirect to frontend reveal page
 app.get('/gg', (req, res) => {
-  res.redirect(process.env.FRONTEND_URL + '/gg');
+  res.redirect('https://pranko.lol/gg');
 });
 
-// POST /webhook — Stripe
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
   try {
@@ -329,12 +397,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   } catch (e) {
     return res.status(400).send(`Webhook error: ${e.message}`);
   }
-
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const email = session.customer_details?.email;
     const packSize = parseInt(session.metadata?.packSize) || 2;
-
     try {
       const codes = [];
       for (let i = 0; i < packSize; i++) {
@@ -347,24 +413,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       console.error('Error creating codes:', e);
     }
   }
-
   res.json({ received: true });
 });
 
-// ── Start ────────────────────────────────────────────────────────────────────
-// POST /create-checkout-session — Stripe Checkout
 app.post('/create-checkout-session', async (req, res) => {
   const { priceId, packSize } = req.body;
-
   const VALID_PRICE_IDS = [
     process.env.STRIPE_PRICE_X2,
     process.env.STRIPE_PRICE_X5
   ];
-
   if (!VALID_PRICE_IDS.includes(priceId)) {
     return res.status(400).json({ error: 'Invalid price ID' });
   }
-
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -374,40 +434,30 @@ app.post('/create-checkout-session', async (req, res) => {
       success_url: `${process.env.FRONTEND_URL}/success`,
       cancel_url: `${process.env.FRONTEND_URL}`,
     });
-
     res.json({ url: session.url });
   } catch (e) {
     console.error('Stripe session error:', e);
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
-// POST /resend-magic-link — Send new magic link
+
 app.post('/resend-magic-link', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
-
   try {
     const result = await pool.query(
       'SELECT email FROM codes WHERE email = $1 LIMIT 1',
       [email]
     );
     if (result.rows.length === 0) {
-      return res.json({ ok: true }); // Silent — don't reveal if email exists
+      return res.json({ ok: true });
     }
     const magicLink = generateMagicLink(email);
     await resend.emails.send({
       from: 'Pranko.lol <hello@app.pranko.lol>',
       to: email,
       subject: '🥐 Your dashboard link',
-      html: `
-        <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px">
-          <h1 style="font-size:24px">🥐 Back for more?</h1>
-          <p>Here's your dashboard link:</p>
-          <a href="${magicLink}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:16px;margin-top:16px">
-            Access my codes →
-          </a>
-        </div>
-      `
+      html: emailMagicLink(magicLink)
     });
     res.json({ ok: true });
   } catch (e) {
@@ -415,7 +465,6 @@ app.post('/resend-magic-link', async (req, res) => {
     res.status(500).json({ error: 'Failed to send link' });
   }
 });
-
 
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
