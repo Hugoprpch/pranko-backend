@@ -19,7 +19,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
@@ -407,14 +407,7 @@ app.post('/resend-magic-link', async (req, res) => {
   }
 });
 
-// DEV ONLY — GET /dev-token?email=x — generate token without email
-// TODO: REMOVE BEFORE GOING LIVE
-app.get('/dev-token', (req, res) => {
-  const { email } = req.query;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, url: `${process.env.FRONTEND_URL}/dashboard?token=${token}` });
-});
+
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Pranko backend running on port ${PORT}`));
