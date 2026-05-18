@@ -343,6 +343,35 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 });
 
 // ── Start ────────────────────────────────────────────────────────────────────
+// POST /create-checkout-session — Stripe Checkout
+app.post('/create-checkout-session', async (req, res) => {
+  const { priceId, packSize } = req.body;
+
+  const VALID_PRICE_IDS = [
+    process.env.STRIPE_PRICE_X2,
+    process.env.STRIPE_PRICE_X5
+  ];
+
+  if (!VALID_PRICE_IDS.includes(priceId)) {
+    return res.status(400).json({ error: 'Invalid price ID' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { packSize: String(packSize) },
+      customer_email: undefined,
+      success_url: `${process.env.FRONTEND_URL}/success`,
+      cancel_url: `${process.env.FRONTEND_URL}`,
+    });
+
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error('Stripe session error:', e);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Pranko backend running on port ${PORT}`));
