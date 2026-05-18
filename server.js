@@ -372,6 +372,49 @@ app.post('/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
+// POST /resend-magic-link — Send new magic link
+app.post('/resend-magic-link', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  try {
+    const result = await pool.query(
+      'SELECT email FROM codes WHERE email = $1 LIMIT 1',
+      [email]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ ok: true }); // Silent — don't reveal if email exists
+    }
+    const magicLink = generateMagicLink(email);
+    await resend.emails.send({
+      from: 'Pranko.lol <hello@pranko.lol>',
+      to: email,
+      subject: '🥐 Your dashboard link',
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px">
+          <h1 style="font-size:24px">🥐 Back for more?</h1>
+          <p>Here's your dashboard link:</p>
+          <a href="${magicLink}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:16px;margin-top:16px">
+            Access my codes →
+          </a>
+        </div>
+      `
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Resend magic link error:', e);
+    res.status(500).json({ error: 'Failed to send link' });
+  }
+});
+
+// DEV ONLY — GET /dev-token?email=x — generate token without email
+// TODO: REMOVE BEFORE GOING LIVE
+app.get('/dev-token', (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  res.json({ token, url: `${process.env.FRONTEND_URL}/dashboard?token=${token}` });
+});
 const PORT = process.env.PORT || 3000;
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Pranko backend running on port ${PORT}`));
