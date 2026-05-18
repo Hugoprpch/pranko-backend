@@ -85,7 +85,7 @@ async function sendMagicLink(email, codes) {
   const codeList = codes.map(c => `<li style="font-size:20px;font-weight:bold;letter-spacing:2px">${c}</li>`).join('');
 
   await resend.emails.send({
-    from: 'Pranko.lol <hello@pranko.lol>',
+    from: 'Pranko.lol <hello@app.pranko.lol>',
     to: email,
     subject: '🥐 Your cheat code is ready',
     html: `
@@ -387,7 +387,7 @@ app.post('/resend-magic-link', async (req, res) => {
     }
     const magicLink = generateMagicLink(email);
     await resend.emails.send({
-      from: 'Pranko.lol <hello@pranko.lol>',
+      from: 'Pranko.lol <hello@app.pranko.lol>',
       to: email,
       subject: '🥐 Your dashboard link',
       html: `
