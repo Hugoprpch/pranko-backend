@@ -9,8 +9,18 @@ const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// SSE clients map: code -> res
+// SSE clients map (Mac script): code -> res
 const sseClients = {};
+
+// SSE dashboard clients map: code -> Set of res
+const dashboardClients = {};
+
+// Notify all dashboard listeners for a code of a status change
+function notifyDashboard(code, status) {
+  const clients = dashboardClients[code];
+  if (!clients) return;
+  clients.forEach(res => res.write(`data: ${JSON.stringify({ status })}\n\n`));
+}
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
@@ -214,6 +224,7 @@ async function scheduleAutoDestroy(code) {
         "UPDATE codes SET status = 'done', terminated_at = NOW() WHERE code = $1",
         [code]
       );
+      notifyDashboard(code, 'done');
       console.log(`Auto-destroyed: ${code}`);
     } catch (e) {
       console.error(`Auto-destroy error for ${code}:`, e);
@@ -276,6 +287,7 @@ osascript -e 'tell application "Terminal" to close front window' & exit
 
 // ── ENDPOINTS ────────────────────────────────────────────────────────────────
 
+// Script injection — transitions waiting -> active
 app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
   const { code } = req.params;
   try {
@@ -287,6 +299,7 @@ app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
       'UPDATE codes SET status = $1, activated_at = NOW() WHERE code = $2',
       ['active', code]
     );
+    notifyDashboard(code, 'active');
     res.type('text/plain').send(generateScript(code));
   } catch (e) {
     console.error(e);
@@ -294,6 +307,7 @@ app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
   }
 });
 
+// SSE for Mac script
 app.get('/events/:code', (req, res) => {
   const { code } = req.params;
   res.setHeader('Content-Type', 'text/event-stream');
@@ -310,6 +324,24 @@ app.get('/events/:code', (req, res) => {
   });
 });
 
+// SSE for dashboard — real-time status updates, no polling needed
+app.get('/watch/:code', (req, res) => {
+  const { code } = req.params;
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  if (!dashboardClients[code]) dashboardClients[code] = new Set();
+  dashboardClients[code].add(res);
+  const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 25000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    dashboardClients[code].delete(res);
+    if (dashboardClients[code].size === 0) delete dashboardClients[code];
+  });
+});
+
+// Launch sound or TTS — transitions active -> launched
 app.post('/launch/:code', async (req, res) => {
   const { code } = req.params;
   const { sound, text } = req.body;
@@ -322,6 +354,7 @@ app.post('/launch/:code', async (req, res) => {
       "UPDATE codes SET status = 'launched', launched_at = NOW() WHERE code = $1",
       [code]
     );
+    notifyDashboard(code, 'launched');
     scheduleAutoDestroy(code);
   }
   if (sound) {
@@ -338,6 +371,7 @@ app.post('/launch/:code', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Stop — transitions any -> done
 app.post('/stop/:code', async (req, res) => {
   const { code } = req.params;
   const client = sseClients[code];
@@ -349,6 +383,7 @@ app.post('/stop/:code', async (req, res) => {
     "UPDATE codes SET status = 'done', terminated_at = NOW() WHERE code = $1",
     [code]
   );
+  notifyDashboard(code, 'done');
   res.json({ ok: true });
 });
 
