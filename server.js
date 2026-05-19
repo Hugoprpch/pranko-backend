@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
@@ -63,6 +64,19 @@ async function initDB() {
       terminated_at TIMESTAMPTZ
     )
   `);
+  // Cleanup stale pranks — if server restarted during an active prank,
+  // the in-memory auto-destroy timer was lost. Mark any launched prank
+  // older than 35 min as done so the dashboard stays consistent.
+  const stale = await pool.query(`
+    UPDATE codes
+    SET status = 'done', terminated_at = NOW()
+    WHERE status = 'launched'
+      AND launched_at < NOW() - INTERVAL '35 minutes'
+    RETURNING code
+  `);
+  if (stale.rowCount > 0) {
+    console.log(`Cleaned up ${stale.rowCount} stale prank(s) on startup:`, stale.rows.map(r => r.code));
+  }
   console.log('DB ready');
 }
 
@@ -311,6 +325,10 @@ app.get('/:code([A-Z]{2}[0-9]{3})', async (req, res) => {
 // SSE for Mac script
 app.get('/events/:code', (req, res) => {
   const { code } = req.params;
+  // Prevent SSE hijacking — reject if a script is already connected for this code
+  if (sseClients[code]) {
+    return res.status(409).type('text/plain').send('Already connected');
+  }
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -345,19 +363,39 @@ app.get('/watch/:code', (req, res) => {
 // Launch sound or TTS — transitions active -> launched
 app.post('/launch/:code', async (req, res) => {
   const { code } = req.params;
-  const { sound, text } = req.body;
+  const { sound, text, token } = req.body;
+
+  // Auth — verify JWT and check ownership
+  try {
+    const { email } = jwt.verify(token, process.env.JWT_SECRET);
+    const ownership = await pool.query('SELECT email FROM codes WHERE code = $1', [code]);
+    if (!ownership.rows[0] || ownership.rows[0].email !== email) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  } catch (e) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const client = sseClients[code];
   if (!client) return res.status(404).json({ error: 'Script not connected' });
-  const result = await pool.query('SELECT status FROM codes WHERE code = $1', [code]);
-  if (!result.rows[0]) return res.status(404).json({ error: 'Code not found' });
-  if (result.rows[0].status === 'active') {
-    await pool.query(
-      "UPDATE codes SET status = 'launched', launched_at = NOW() WHERE code = $1",
-      [code]
-    );
+
+  // Atomic transition active -> launched — prevents double timer if /launch is called twice fast
+  const transition = await pool.query(`
+    UPDATE codes
+    SET status = 'launched', launched_at = NOW()
+    WHERE code = $1 AND status = 'active'
+    RETURNING code
+  `, [code]);
+
+  // Verify code exists regardless of whether transition happened
+  const codeCheck = await pool.query('SELECT status FROM codes WHERE code = $1', [code]);
+  if (!codeCheck.rows[0]) return res.status(404).json({ error: 'Code not found' });
+
+  if (transition.rowCount > 0) {
     notifyDashboard(code, 'launched');
     scheduleAutoDestroy(code);
   }
+
   if (sound) {
     if (!VALID_SOUNDS.includes(sound)) return res.status(400).json({ error: 'Invalid sound' });
     client.write(`data: {"action":"play","sound":"${sound}"}\n\n`);
@@ -375,6 +413,19 @@ app.post('/launch/:code', async (req, res) => {
 // Stop — transitions any -> done
 app.post('/stop/:code', async (req, res) => {
   const { code } = req.params;
+  const { token } = req.body;
+
+  // Auth — verify JWT and check ownership
+  try {
+    const { email } = jwt.verify(token, process.env.JWT_SECRET);
+    const ownership = await pool.query('SELECT email FROM codes WHERE code = $1', [code]);
+    if (!ownership.rows[0] || ownership.rows[0].email !== email) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  } catch (e) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const client = sseClients[code];
   if (client) {
     client.write(`data: {"action":"stop"}\n\n`);
@@ -438,6 +489,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   } catch (e) {
     return res.status(400).send(`Webhook error: ${e.message}`);
   }
+  // Respond 200 immediately — prevents Stripe retries if code creation or email is slow
+  res.json({ received: true });
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const email = session.customer_details?.email;
@@ -454,7 +508,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       console.error('Error creating codes:', e);
     }
   }
-  res.json({ received: true });
 });
 
 app.post('/create-checkout-session', async (req, res) => {
@@ -482,7 +535,7 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-app.post('/resend-magic-link', async (req, res) => {
+app.post('/resend-magic-link', rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }), async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   try {
