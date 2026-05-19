@@ -223,49 +223,54 @@ async function scheduleAutoDestroy(code) {
 
 // ── Shell script generator ───────────────────────────────────────────────────
 function generateScript(code) {
-  const soundVars = VALID_SOUNDS.map(s =>
-    `${s.toUpperCase()}_URL="${process.env.R2_BASE_URL}/${s}.mp3"`
+  const downloadCmds = VALID_SOUNDS.map(s =>
+    `curl -sf "${process.env.R2_BASE_URL}/${s}.mp3" -o "$TMP_DIR/${s}.mp3" &`
   ).join('\n');
 
-  const downloadCmds = VALID_SOUNDS.map(s =>
-    `curl -sf "$${s.toUpperCase()}_URL" -o "$TMP_DIR/${s}.mp3" &`
-  ).join('\n');
+  const workerScript = `#!/bin/bash
+TMP_DIR="/tmp/pranko_${code}"
+SIGNAL_URL="${process.env.BASE_URL}/events/${code}"
+
+cleanup() {
+  rm -rf "\$TMP_DIR"
+  open "https://pranko.lol/gg"
+  exit 0
+}
+
+curl -sf -N "\$SIGNAL_URL" | while IFS= read -r line; do
+  if echo "\$line" | grep -q '"action":"play"'; then
+    SOUND=\$(echo "\$line" | sed 's/.*"sound":"\\([^"]*\\)".*/\\1/')
+    [ -f "\$TMP_DIR/\$SOUND.mp3" ] && afplay "\$TMP_DIR/\$SOUND.mp3" &
+  elif echo "\$line" | grep -q '"action":"say"'; then
+    TEXT=\$(echo "\$line" | sed 's/.*"text":"\\([^"]*\\)".*/\\1/')
+    say "\$TEXT" &
+  elif echo "\$line" | grep -q '"action":"stop"'; then
+    cleanup
+  fi
+done
+cleanup
+`;
 
   return `#!/bin/bash
 # pranko.lol — ${code}
-
-${soundVars}
-
-SIGNAL_URL="${process.env.BASE_URL}/events/${code}"
 TMP_DIR="/tmp/pranko_${code}"
-mkdir -p "$TMP_DIR"
+mkdir -p "\$TMP_DIR"
+
+# Write worker script
+cat > "\$TMP_DIR/worker.sh" << 'PRANKO_EOF'
+${workerScript}PRANKO_EOF
+
+chmod +x "\$TMP_DIR/worker.sh"
 
 # Download sounds in background
 ${downloadCmds}
 wait
 
-cleanup() {
-  rm -rf "$TMP_DIR"
-  open "https://pranko.lol/gg"
-  exit 0
-}
+# Launch worker detached from terminal
+nohup "\$TMP_DIR/worker.sh" > "\$TMP_DIR/pranko.log" 2>&1 &
 
-# Listen for signals via SSE
-curl -sf -N "$SIGNAL_URL" | while IFS= read -r line; do
-  if echo "$line" | grep -q '"action":"play"'; then
-    SOUND=$(echo "$line" | sed 's/.*"sound":"\\([^"]*\\)".*/\\1/')
-    if [ -f "$TMP_DIR/$SOUND.mp3" ]; then
-      afplay "$TMP_DIR/$SOUND.mp3" &
-    fi
-  elif echo "$line" | grep -q '"action":"say"'; then
-    TEXT=$(echo "$line" | sed 's/.*"text":"\\([^"]*\\)".*/\\1/')
-    say "$TEXT" &
-  elif echo "$line" | grep -q '"action":"stop"'; then
-    cleanup
-  fi
-done
-
-cleanup
+# Close terminal window
+osascript -e 'tell application "Terminal" to close front window' & exit
 `;
 }
 
