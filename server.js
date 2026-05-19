@@ -120,7 +120,7 @@ function emailCheatCode(codes, magicLink) {
           <td style="padding:32px">
             <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.08em">Your code${codes.length > 1 ? 's' : ''}</p>
             <table width="100%" cellpadding="0" cellspacing="0">${codeList}</table>
-            <p style="margin:24px 0 8px;font-size:14px;color:#e53e3e;font-weight:600">⚠️ Single-use — do NOT test on your own Mac</p>
+            <p style="margin:24px 0 8px;font-size:14px;color:#e53e3e;font-weight:600">⚡ Single-use — one code, one prank</p>
             <p style="margin:0 0 28px;font-size:14px;color:#666;line-height:1.5">Each code works once. The script runs silently for 30 minutes, then deletes itself.</p>
             <table cellpadding="0" cellspacing="0" width="100%">
               <tr>
