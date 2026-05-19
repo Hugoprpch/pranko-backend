@@ -259,7 +259,8 @@ curl -sf -N "\$SIGNAL_URL" | while IFS= read -r line; do
     cleanup
   fi
 done
-cleanup
+rm -rf "$TMP_DIR"
+exit 0
 `;
 
   return `#!/bin/bash
