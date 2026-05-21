@@ -526,7 +526,7 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: { packSize: String(packSize) },
       customer_email: undefined,
       success_url: `${process.env.FRONTEND_URL}/success`,
-      cancel_url: `${process.env.FRONTEND_URL}`,
+      cancel_url: `https://pranko.lol`,
     });
     res.json({ url: session.url });
   } catch (e) {
