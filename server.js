@@ -45,6 +45,7 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
+app.get('/health', (req, res) => res.json({ ok: true }));
 
 // ── Sounds enum ─────────────────────────────────────────────────────────────
 const VALID_SOUNDS = ['croissant', 'fart', 'coincoin', 'bruh', 'chipmunk', 'windowsxp', 'sadtrombone', 'nokia'];
